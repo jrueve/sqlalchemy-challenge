@@ -42,6 +42,7 @@ List all the available routes."""
 @app.route("/")
 def welcome():
     return (
+        #create welcome page with links to apis created
         f"Welcome to the Hawaii Climate App Homepage<br/>"
         f"Available Routes:<br/><br/>"
         f"/api/v1.0/precipitation<br/><br/>"
@@ -61,6 +62,8 @@ def welcome():
 
 @app.route("/api/v1.0/precipitation")
 def precipitation():
+    #get most recent date, then change from string to integer and place in appropriate spot for year_past calculation
+    
     recent_date = session.query(func.Max(Measurement.date)).scalar()
     result = []
     x = recent_date.split('-')
@@ -68,12 +71,16 @@ def precipitation():
         if i.isnumeric():
             result.append(int(i))
     year_past = dt.date(result[0], result[1], result[2]) - dt.timedelta(days=365)
+
+    #query the data for date and precipitation
     data = session.query(Measurement.date, Measurement.prcp).\
         filter(Measurement.date >= year_past).\
         order_by(Measurement.date).all()
-    
+
+    #make data dictionary
     precipitation_dict = dict(data)
-    
+
+    #jsonify
     return jsonify(precipitation_dict)
 #################################################
 
@@ -81,7 +88,13 @@ def precipitation():
 
 @app.route("/api/v1.0/stations")
 def stations():
+
+    #query for station data
     stations_query = session.query(Station.name, Station.station, Station.latitude, Station.longitude, Station.elevation)
+
+    #create empty list and loop through station data getting name, station, latitude, longitude, and elevation as they are in that order
+    #and add to station dictionary. then append dictioanry to list so that info can be jsonified
+    
     station_list = []
     for name,station,lat,lon,elev in stations_query:
         station = {}
@@ -92,6 +105,7 @@ def stations():
         station["Elevation"] = elev
         station_list.append(station)
 
+    #jsonify
     return jsonify(stations)
 
 #################################################
@@ -101,6 +115,8 @@ def stations():
 
 @app.route("/api/v1.0/tobs")
 def tobs():
+    #get most recent date, then change from string to integer and place in appropriate spot for year_past calculation
+    
     recent_date = session.query(func.Max(Measurement.date)).scalar()
     result = []
     x = recent_date.split('-')
@@ -108,10 +124,13 @@ def tobs():
         if i.isnumeric():
             result.append(int(i))
     year_past = dt.date(result[0], result[1], result[2]) - dt.timedelta(days=365)
+    
+    #Query info for temp and their date based on most-active station and limit to past year
     temp = session.query(Measurement.date, Measurement.tobs).filter(Measurement.date >= year_past).\
         filter(Measurement.station=='USC00519281').\
         order_by(Measurement.date).all()
-    
+
+    #loop through data to get date, then temp as it is in that order. add to dictionary then append to list to be jsonified
     temp_total = []
     for d,t in temp:
         temperature = {}
@@ -119,6 +138,7 @@ def tobs():
         temperature["Temperature"] = t
         temp_total.append(temperature)
 
+        #jsonify
         return jsonify(temp_total)
 #################################################
 
@@ -130,10 +150,15 @@ def tobs():
 
 @app.route("/api/v1.0/<start>")
 def start_temp(start_input):
+    
+    #strip start date that was input into correct order and format
     start = dt.datetime.strptime(start_input, '%Y-%m-%d')
+    
+    #Query for Temp min, avg, then max for all dates greater than input
     temp_data = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
         filter(Measurement.date >= start).all()
-
+    
+    #loop through data for min, avg, max temp as it is in that order. add to dictionary then append to list to be jsonified
     temp_list = []
     for min, avg, max in temp_data:
         temp_dict = {}
@@ -142,6 +167,7 @@ def start_temp(start_input):
         temp_dict['TMAX'] = max
         temp_list.append(temp_dict)
 
+    #jsonify
     return jsonify(temp_list)
 
 #################################################
@@ -154,11 +180,16 @@ def start_temp(start_input):
 
 @app.route("/api/v1.0/<start>/<end>")
 def start_end_temp(start_input, end_input):
+
+    #strip start and end date that was input into correct order and format
     start = dt.datetime.strptime(start_input, '%Y-%m-%d')
     end = dt.datetime.strptime(end_input, '%Y-%m-%d')
+
+    #Query for Temp min, avg, then max for all dates between two inputs
     temp_data = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
         filter(Measurement.date >= start).filter(Measurement.date <= end).all()
-
+    
+    #loop through data for min, avg, max temp as it is in that order. add to dictionary then append to list to be jsonified
     temp_list = []
     for min, avg, max in temp_data:
         temp_dict = {}
@@ -167,6 +198,7 @@ def start_end_temp(start_input, end_input):
         temp_dict['TMAX'] = max
         temp_list.append(temp_dict)
 
+    #jsonify
     return jsonify(temp_list)
 #################################################
 
